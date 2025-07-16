@@ -1,5 +1,5 @@
 from backend.server import Server
-from .utils import merge_boxes_in_results
+from utils import merge_boxes_in_results
 import os
 import random
 server = Server()

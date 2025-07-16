@@ -2,9 +2,9 @@ import json
 import os
 import logging
 import shutil
-
 from flask import Flask, request, make_response
-from .server import Server
+import flask
+from server import Server
 from utils import merge_boxes_in_results
 
 # C：当前置信度阈值；
@@ -15,7 +15,6 @@ D_above, D_below, a_num, b_num = 0, 0, 0, 0
 del_C = 0.05
 C = 0.9
 server = Server()
-
 
 @app.before_first_request
 def init():

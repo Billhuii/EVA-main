@@ -1,7 +1,7 @@
 import os
 import logging
-from .object_detector import Detector
-from ..utils import (Results, Region)
+from object_detector import Detector
+from utils import (Results, Region)
 import cv2 as cv
 
 """
