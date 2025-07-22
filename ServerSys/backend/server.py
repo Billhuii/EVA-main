@@ -1,5 +1,6 @@
 import os
 import logging
+# from ServerSys.backend.object_detector import Detector
 from object_detector import Detector
 from utils import (Results, Region)
 import cv2 as cv

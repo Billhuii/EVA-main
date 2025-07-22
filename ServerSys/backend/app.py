@@ -6,6 +6,7 @@ from flask import Flask, request, make_response
 import flask
 from server import Server
 from utils import merge_boxes_in_results
+import time
 
 # C：当前置信度阈值；
 # del_C：阈值增减的步长；
@@ -15,6 +16,7 @@ D_above, D_below, a_num, b_num = 0, 0, 0, 0
 del_C = 0.05
 C = 0.9
 server = Server()
+LATENCY_LOG_FILE = "latency_log.txt"
 
 @app.before_first_request
 def init():
@@ -29,6 +31,11 @@ def init():
             os.remove(file)
         f = open(file, 'w+')
         f.close()
+
+    # ADDED: Clear old latency log on first request
+    if os.path.exists(LATENCY_LOG_FILE):
+        os.remove(LATENCY_LOG_FILE)
+
     for dirs in ['../server_temp']:
         if os.path.isdir(dirs):
             shutil.rmtree(dirs)
@@ -46,10 +53,22 @@ def index(): # 首页测试接口
 # /low 接口：接收低置信度推理结果
 @app.route("/low", methods=["POST"])
 def perform_low_images():
+    # --- ADDED: Latency Calculation Logic ---
+    recognition_time = time.time()
+    # ---
+
     global D_above, D_below, a_num, b_num, C, del_C
     change_threshold = 0.0
 
     result = request.form
+    # --- ADDED: Latency Calculation Logic ---
+    capture_time = result.get('capture_timestamp', type=float)
+    if capture_time:
+        latency = recognition_time - capture_time
+        with open(LATENCY_LOG_FILE, "a") as log_file:
+            log_file.write(f"{latency}\n")
+    # ---
+
     image = request.files["image"]
     image.save(os.path.join('../server_temp/', result['name']))
     # 记录低置信度结果信息（名称、框位置、conf、类别）到 low_img.txt
@@ -99,7 +118,19 @@ def perform_low_images():
 # receive high confidence results
 @app.route("/high", methods=["POST"])
 def perform_high_images():
+    # --- ADDED: Latency Calculation Logic ---
+    recognition_time = time.time()
+    # ---
+
     result = json.loads(request.data)
+    # --- ADDED: Latency Calculation Logic ---
+    capture_time = result.get('capture_timestamp')
+    if capture_time:
+        latency = recognition_time - float(capture_time)
+        with open(LATENCY_LOG_FILE, "a") as log_file:
+            log_file.write(f"{latency}\n")
+    # ---
+
     result_file = open("high_img.txt", "a")
     result_file.write(f"{result['name']}, {result['shape'][0]}, {result['shape'][1]}, {result['shape'][2]}, {result['shape'][3]}, {result['conf']}, {result['label']}\n")
     result_file.close()

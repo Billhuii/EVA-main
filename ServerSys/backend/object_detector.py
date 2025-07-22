@@ -28,7 +28,12 @@ class Detector:
         # TensorFlow 配置：GPU按需分配内存
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
-        self.model_path = model_path
+
+        # --- MODIFIED: Construct absolute path to the model file ---
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.model_path = os.path.join(base_dir, model_path)
+        # --- End of Modification ---
+        
         self.d_graph = tf.Graph() # 自定义图加载模型
 
         # 读取并解析 frozen graph 模型文件

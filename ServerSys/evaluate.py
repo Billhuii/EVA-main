@@ -34,12 +34,15 @@ def calc_iou(a, b):
 # generate ground truth 生成 Ground Truth 标注文件
 def gt():
     bandwidth = 0
-    image_direc = os.path.join("dataset/trafficcam_2/src/")
-    results_path = "trafficcam_2_gt"
+    # --- MODIFIED: Corrected the dataset path to be inside CameraSys ---
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    image_direc = os.path.join(project_root, "CameraSys/dataset/trafficcam_2/src/")
+    results_path = os.path.join(project_root, "trafficcam_2_gt")
+    # --- End of Modification ---
     results_file = open(results_path, "w")
     for i in range(len(os.listdir(image_direc))):
         fname = f"{str(i).zfill(10)}.png"
-        image_path = image_direc + fname
+        image_path = os.path.join(image_direc, fname) # Now uses absolute path
         bandwidth = bandwidth + os.path.getsize(image_path)
         results, rpn_results = server.perform_detection(image_direc, 1.0, fname)
         results = merge_boxes_in_results(results.regions_dict, 0.3, 0.3)
@@ -55,8 +58,12 @@ def gt():
 
 # evaluate eva system 读取 GT 与检测结果，计算准确率（precision）
 def eva():
-    gt_path = "traffic_2_gt"
-    cova_path = "./backend/high_img.txt"
+    # --- MODIFIED: Use absolute paths for robustness ---
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    gt_path = os.path.join(project_root, "trafficcam_2_gt")
+    cova_path = os.path.join(project_root, "ServerSys/backend/high_img.txt")
+    # --- End of Modification ---
+    
     gt_box = {}
     cova_box = {}
     # get gt box
@@ -102,6 +109,11 @@ def eva():
     for key, value in cova_box.items():
         for box in cova_box[key]:
             found = False
+            # ADDED: Check if the frame key exists in ground truth to avoid errors
+            if key not in gt_box:
+                fp += 1
+                count.append(0)
+                continue
             for gbox in gt_box[key]:
                 if calc_iou(box[:4], gbox[:4]) > THRESHOLD:
                     found = True
@@ -113,7 +125,42 @@ def eva():
                 print(box[4])
                 fp += 1
                 count.append(0)
-    print(tp, fp, round(tp / (tp + fp), 3))
-#输出 TP 数、FP 数、精确率（Precision）
 
-# eva()
+    # ADDED: Logic to calculate False Negatives (FN)
+    fn = 0
+    # Create a copy of cova_box to mark matched boxes, preventing double counting
+    cova_box_copy = {k: [item[:] for item in v] for k, v in cova_box.items()}
+
+    for key, value in gt_box.items():
+        for gbox in gt_box[key]:
+            found = False
+            if key in cova_box_copy:
+                for cbox in cova_box_copy[key]:
+                    if calc_iou(gbox[:4], cbox[:4]) > THRESHOLD:
+                        found = True
+                        # Remove the matched box so it cannot be matched again
+                        cova_box_copy[key].remove(cbox)
+                        break
+            if not found:
+                fn += 1 # This ground truth box was not detected
+
+    # ADDED: Calculate Precision, Recall, and F1-Score
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    # MODIFIED: Print all evaluation metrics
+    print("-" * 30)
+    print("Evaluation Results:")
+    print(f"True Positives (TP):    {tp}")
+    print(f"False Positives (FP):   {fp}")
+    print(f"False Negatives (FN):   {fn}")
+    print("-" * 30)
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall:    {recall:.4f}")
+    print(f"F1-Score:  {f1_score:.4f}")
+    print("-" * 30)
+
+
+# gt()
+eva()
