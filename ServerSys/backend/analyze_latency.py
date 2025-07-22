@@ -2,7 +2,7 @@
 
 import numpy as np
 
-log_file = 'ServerSys/backend/latency_log.txt' # 确认路径正确
+log_file = 'latency_log.txt'  # 确认路径正确
 latencies = []
 
 try:
